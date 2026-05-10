@@ -6,7 +6,7 @@ import requests
 from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from anthropic import Anthropic
+import google.generativeai as genai
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 SENDER_EMAIL    = os.environ["GMAIL_ADDRESS"]
@@ -71,7 +71,8 @@ def fetch_articles() -> list[dict]:
 
 def analyse_with_claude(articles: list[dict], session: str) -> dict:
     """Send articles to Claude for analysis and structured digest."""
-    client = Anthropic(api_key=ANTHROPIC_KEY)
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    model = genai.GenerativeModel("gemini-1.5-flash")
 
     articles_text = "\n\n".join([
         f"[{i+1}] SOURCE: {a['source']}\nTITLE: {a['title']}\nURL: {a['link']}\nSUMMARY: {a['summary']}"
