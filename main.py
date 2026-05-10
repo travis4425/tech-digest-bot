@@ -7,7 +7,7 @@ import requests
 from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import google.generativeai as genai
+from google import genai
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 SENDER_EMAIL    = os.environ["GMAIL_ADDRESS"]
@@ -70,8 +70,7 @@ def fetch_articles() -> list[dict]:
 
 def analyse_with_gemini(articles: list[dict], session: str) -> dict:
     """Send articles to Gemini for analysis and structured digest."""
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
     articles_text = "\n\n".join([
         f"[{i+1}] SOURCE: {a['source']}\nTITLE: {a['title']}\nURL: {a['link']}\nSUMMARY: {a['summary']}"
@@ -140,7 +139,7 @@ Lưu ý:
 - Nếu không có bài về một section, để items là []
 """
 
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
 
     raw = response.text.strip()
     raw = re.sub(r"^```json\s*", "", raw)
