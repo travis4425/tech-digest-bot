@@ -7,13 +7,13 @@ import requests
 from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from google import genai
+from groq import Groq
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 SENDER_EMAIL    = os.environ["GMAIL_ADDRESS"]
 SENDER_PASSWORD = os.environ["GMAIL_APP_PASSWORD"]
 RECIPIENT_EMAIL = os.environ.get("RECIPIENT_EMAIL", SENDER_EMAIL)
-GEMINI_API_KEY   = os.environ["GEMINI_API_KEY"]
+GROQ_API_KEY     = os.environ["GROQ_API_KEY"]
 
 RSS_FEEDS = [
     # Tech / AI general
@@ -68,9 +68,9 @@ def fetch_articles() -> list[dict]:
     return unique[:MAX_ITEMS_TOTAL]
 
 
-def analyse_with_gemini(articles: list[dict], session: str) -> dict:
-    """Send articles to Gemini for analysis and structured digest."""
-    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+def analyse_with_groq(articles: list[dict], session: str) -> dict:
+    """Send articles to Groq (Llama) for analysis and structured digest."""
+    client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
     articles_text = "\n\n".join([
         f"[{i+1}] SOURCE: {a['source']}\nTITLE: {a['title']}\nURL: {a['link']}\nSUMMARY: {a['summary']}"
@@ -139,9 +139,13 @@ Lưu ý:
 - Nếu không có bài về một section, để items là []
 """
 
-    response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=4000,
+    )
 
-    raw = response.text.strip()
+    raw = response.choices[0].message.content.strip()
     raw = re.sub(r"^```json\s*", "", raw)
     raw = re.sub(r"```$", "", raw).strip()
 
@@ -268,7 +272,7 @@ def main():
     articles = fetch_articles()
     print(f"[INFO] Fetched {len(articles)} articles")
 
-    digest = analyse_with_gemini(articles, session)
+    digest = analyse_with_groq(articles, session)
     print("[INFO] Claude analysis complete")
 
     session_label = "☀️ Sáng" if session == "morning" else "🌙 Tối"
