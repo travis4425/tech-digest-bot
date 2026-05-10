@@ -1,0 +1,36 @@
+name: Tech Digest — Daily Report
+
+on:
+  schedule:
+    # 7h sáng Singapore (UTC+8) = 23:00 UTC hôm trước
+    - cron: '0 23 * * *'
+    # 7h tối Singapore (UTC+8) = 11:00 UTC
+    - cron: '0 11 * * *'
+  # Cho phép chạy thủ công để test
+  workflow_dispatch:
+
+jobs:
+  send-digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Tech Digest
+        env:
+          GMAIL_ADDRESS:      ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECIPIENT_EMAIL:    ${{ secrets.RECIPIENT_EMAIL }}
+          ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python main.py
