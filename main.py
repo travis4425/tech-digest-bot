@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import smtplib
 import feedparser
@@ -12,7 +13,7 @@ import google.generativeai as genai
 SENDER_EMAIL    = os.environ["GMAIL_ADDRESS"]
 SENDER_PASSWORD = os.environ["GMAIL_APP_PASSWORD"]
 RECIPIENT_EMAIL = os.environ.get("RECIPIENT_EMAIL", SENDER_EMAIL)
-ANTHROPIC_KEY   = os.environ["ANTHROPIC_API_KEY"]
+GEMINI_API_KEY   = os.environ["GEMINI_API_KEY"]
 
 RSS_FEEDS = [
     # Tech / AI general
@@ -46,8 +47,6 @@ def fetch_articles() -> list[dict]:
             feed = feedparser.parse(url)
             for entry in feed.entries[:MAX_ITEMS_PER_FEED]:
                 summary = getattr(entry, "summary", "") or getattr(entry, "description", "")
-                # Strip HTML tags simply
-                import re
                 summary = re.sub(r"<[^>]+>", "", summary)[:500]
                 articles.append({
                     "source": source_name,
@@ -69,8 +68,8 @@ def fetch_articles() -> list[dict]:
     return unique[:MAX_ITEMS_TOTAL]
 
 
-def analyse_with_claude(articles: list[dict], session: str) -> dict:
-    """Send articles to Claude for analysis and structured digest."""
+def analyse_with_gemini(articles: list[dict], session: str) -> dict:
+    """Send articles to Gemini for analysis and structured digest."""
     genai.configure(api_key=os.environ["GEMINI_API_KEY"])
     model = genai.GenerativeModel("gemini-1.5-flash")
 
@@ -141,15 +140,9 @@ Lưu ý:
 - Nếu không có bài về một section, để items là []
 """
 
-    response = client.messages.create(
-        model="claude-sonnet-4-5",
-        max_tokens=4000,
-        messages=[{"role": "user", "content": prompt}]
-    )
+    response = model.generate_content(prompt)
 
-    raw = response.content[0].text.strip()
-    # Remove possible markdown fences
-    import re
+    raw = response.text.strip()
     raw = re.sub(r"^```json\s*", "", raw)
     raw = re.sub(r"```$", "", raw).strip()
 
@@ -242,7 +235,7 @@ def build_html_email(digest: dict, session: str) -> str:
 
     <!-- FOOTER -->
     <div style="text-align:center; padding:16px;">
-      <p style="margin:0; font-size:12px; color:#94a3b8;">Được tạo tự động bởi Tech Digest Bot • Powered by Claude AI</p>
+      <p style="margin:0; font-size:12px; color:#94a3b8;">Được tạo tự động bởi Tech Digest Bot • Powered by Gemini AI</p>
       <p style="margin:4px 0 0 0; font-size:12px; color:#94a3b8;">Nguồn: TechCrunch, The Verge, HN, MIT Tech Review, Anthropic, Reddit</p>
     </div>
 
@@ -276,7 +269,7 @@ def main():
     articles = fetch_articles()
     print(f"[INFO] Fetched {len(articles)} articles")
 
-    digest = analyse_with_claude(articles, session)
+    digest = analyse_with_gemini(articles, session)
     print("[INFO] Claude analysis complete")
 
     session_label = "☀️ Sáng" if session == "morning" else "🌙 Tối"
